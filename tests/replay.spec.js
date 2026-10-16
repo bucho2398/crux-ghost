@@ -1,0 +1,35 @@
+import {test,expect} from '@playwright/test';
+test('local MP4 render keeps dimensions, timing and all video bytes on device',async({page})=>{
+  const errors=[], requests=[];
+  page.on('pageerror',e=>errors.push(e.message));
+  page.on('request',r=>requests.push({url:r.url(),method:r.method()}));
+  await page.goto('/');await expect(page).toHaveTitle(/Crux Ghost/);
+  await page.getByRole('button',{name:'Try a demo'}).click();
+  await expect(page.locator('#export')).toBeEnabled();
+  await page.locator('#timeline').evaluate(e=>{e.value='1.5';e.dispatchEvent(new Event('input',{bubbles:true}));});
+  await expect(page.locator('#time')).toHaveText('00:01.500');
+  await page.locator('#start-a').fill('0.25');await page.locator('#start-a').dispatchEvent('change');
+  await page.locator('#start-b').fill('0.5');await page.locator('#start-b').dispatchEvent('change');
+  await page.locator('#duration').fill('0.75');
+  await page.locator('#export').click();
+  await expect(page.locator('#result')).toBeVisible({timeout:120000});
+  await expect(page.locator('#result-info')).toContainText('480×640');
+  await expect(page.locator('#result-info')).toContainText('30.000 fps');
+  await expect(page.locator('#result-info')).toContainText('0.75s');
+  await expect.poll(()=>page.locator('#result-video').evaluate(v=>v.videoWidth)).toBe(480);
+  expect(requests.every(r=>r.method==='GET')).toBeTruthy();
+  expect(requests.every(r=>r.url.startsWith('http://127.0.0.1:8080')||r.url.startsWith('blob:'))).toBeTruthy();
+  expect(errors).toEqual([]);
+  await page.screenshot({path:'test-results/desktop.png',fullPage:true});
+  await page.setViewportSize({width:390,height:844});
+  await expect(page.locator('body')).toBeVisible();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBeTruthy();
+  await page.screenshot({path:'test-results/mobile.png',fullPage:true});
+});
+test('lossless export and cancellation reset the worker',async({page})=>{
+  await page.goto('/');await page.locator('#demo').click();await expect(page.locator('#export')).toBeEnabled();
+  await page.locator('#export').click();await page.locator('#cancel').click();await expect(page.locator('#export')).toBeEnabled();
+  await page.locator('#quality').selectOption('lossless');await page.locator('#duration').fill('0.3');
+  await page.locator('#export').click();await expect(page.locator('#result')).toBeVisible({timeout:120000});
+  await expect(page.locator('#result-info')).toContainText('RGB codec-lossless');
+});

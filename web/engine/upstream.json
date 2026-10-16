@@ -1,0 +1,12 @@
+{
+  "package": "@ffmpeg/core",
+  "version": "0.12.10",
+  "upstreamRevision": "71aa99d37c02a7b4c435275ca9ef50e612f6efa1",
+  "source": "https://github.com/ffmpegwasm/ffmpeg.wasm/tree/71aa99d37c02a7b4c435275ca9ef50e612f6efa1",
+  "buildRecipe": "https://github.com/ffmpegwasm/ffmpeg.wasm/blob/71aa99d37c02a7b4c435275ca9ef50e612f6efa1/Dockerfile",
+  "license": "GPL-2.0-or-later",
+  "binarySHA256": {
+    "ffmpeg-core.js": "b266ab5b952555881dd6310663986994a182acb2b7ff25cf10a25f7a37ac2b21",
+    "ffmpeg-core.wasm": "9f57947a5bd530d8f00c5b3f2cb2a3492faa7e5d823315342d6a8656d0a6b7b7"
+  }
+}

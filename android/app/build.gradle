@@ -1,0 +1,28 @@
+plugins { id 'com.android.application' }
+android {
+    namespace 'app.cruxghost'
+    compileSdk 35
+    defaultConfig {
+        applicationId 'app.cruxghost'
+        minSdk 29
+        targetSdk 35
+        versionCode 1
+        versionName '0.1.0'
+    }
+    signingConfigs {
+        release {
+            if (System.getenv('SIGNING_STORE_FILE')) {
+                storeFile file(System.getenv('SIGNING_STORE_FILE'))
+                storePassword System.getenv('SIGNING_PASSWORD')
+                keyAlias 'cruxghost'
+                keyPassword System.getenv('SIGNING_PASSWORD')
+            }
+        }
+    }
+    buildTypes { release { signingConfig signingConfigs.release; minifyEnabled false } }
+    compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+    sourceSets { main { assets.srcDirs = ["$buildDir/generated/appAssets"] } }
+}
+tasks.register('copyWebAssets', Copy) { from '../../web'; into "$buildDir/generated/appAssets/www" }
+tasks.named('preBuild').configure { dependsOn 'copyWebAssets' }
+dependencies { implementation 'androidx.webkit:webkit:1.12.1' }
