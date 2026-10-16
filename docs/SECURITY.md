@@ -10,7 +10,7 @@ The app does not need a credential to read the private authoring repository. Rev
 
 ## Android
 
-The APK loads bundled files under Android’s local appassets HTTPS origin. Remote HTTP/HTTPS resource loads inside the WebView are blocked; external links open in the system browser. Files are selected through Android’s system document picker. The only JavaScript bridge creates, writes, completes or aborts one pending MP4 in Downloads, with a random per-save token. It exposes no shell execution, broad filesystem access or remote-control operation. No storage, camera or microphone permission is requested.
+The APK loads bundled files under Android’s local appassets HTTPS origin. Remote HTTP/HTTPS resource loads inside the WebView are blocked; external links open in the system browser. Files are selected through Android’s system document picker. The only JavaScript bridge creates, writes, completes or aborts one pending MP4 in Downloads, with a random per-save token. It exposes no shell execution, broad filesystem access or remote-control operation. No Internet, storage, camera or microphone permission is requested. The APK bundles all runtime assets, so even a network request cannot leave this app. External browser intents use the browser’s own permission. Unknown local-asset paths fail closed with a 404.
 
 ## Builds and signing
 

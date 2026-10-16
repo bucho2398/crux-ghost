@@ -62,7 +62,12 @@ public class MainActivity extends Activity {
         web.setWebViewClient(new WebViewClient() {
             @Override public WebResourceResponse shouldInterceptRequest(WebView view,WebResourceRequest request) {
                 Uri uri=request.getUrl();
-                if (HOST.equals(uri.getHost())) return loader.shouldInterceptRequest(uri);
+                if (HOST.equals(uri.getHost()) && "https".equals(uri.getScheme())) {
+                    WebResourceResponse asset=loader.shouldInterceptRequest(uri);
+                    if(asset!=null)return asset;
+                    return new WebResourceResponse("text/plain","UTF-8",404,"Not Found",
+                        java.util.Collections.emptyMap(),new ByteArrayInputStream(new byte[0]));
+                }
                 if ("https".equals(uri.getScheme()) || "http".equals(uri.getScheme()))
                     return new WebResourceResponse("text/plain","UTF-8",new ByteArrayInputStream(new byte[0]));
                 return null;
