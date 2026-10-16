@@ -140,8 +140,8 @@ public class MainActivity extends Activity {
         }
     }
     @Override public void onBackPressed() {
-        web.evaluateJavascript("document.getElementById('install-dialog').open", value -> {
-            if("true".equals(value))web.evaluateJavascript("document.getElementById('install-dialog').close()",null);
+        web.evaluateJavascript("!!document.querySelector('dialog[open]')", value -> {
+            if("true".equals(value))web.evaluateJavascript("document.querySelector('dialog[open]').close()",null);
             else finish();
         });
     }

@@ -4,6 +4,8 @@ const canvas = $('preview'), ctx = canvas.getContext('2d',{alpha:false});
 const layers = takes.map(() => document.createElement('canvas'));
 let duration = 0, position = 0, playing = false, worker = null, busy = false, resultBlob = null, resultURL = null, wakeLock = null, renderPlan = null;
 let seekVersion = 0, objectURLs = [], loadingDemo = false;
+let editingTake = null, editorVersion = 0;
+const editorVideo = $('editor-video');
 const fmt = n => `${String(Math.floor(Math.max(0,n)/60)).padStart(2,'0')}:${Math.max(0,n%60).toFixed(3).padStart(6,'0')}`;
 const bytes = n => n >= 1024**2 ? `${(n/1024**2).toFixed(1)} MB` : `${(n/1024).toFixed(0)} KB`;
 const value = id => Number($(id).value);
@@ -32,6 +34,7 @@ function update() {
   $('canvas-wrap').classList.toggle('has-takes',both);
   for(const id of ['play','back','forward','timeline']) $(id).disabled = !valid || busy;
   $('export').disabled = !valid || busy;
+  for(const take of takes) $('edit-'+take.id).disabled = !take.ready || busy;
   $('end-time').textContent=fmt(duration);$('timeline').max=String(duration || 1);$('timeline').value=String(position);$('time').textContent=fmt(position);
   if(both){
     const d=dimensions();
@@ -78,6 +81,58 @@ async function seek(time) {
   if(version===seekVersion)draw();
 }
 function pause() {playing=false;takes.forEach(t=>t.video.pause());$('play').textContent='▶';$('play').setAttribute('aria-label','Play comparison');}
+function editorTime() {
+  if(!editingTake)return;
+  const time=editorVideo.currentTime;
+  $('editor-timeline').value=String(time);
+  $('editor-time').textContent=fmt(time);
+  $('editor-apply').textContent=`Start here · ${fmt(time)}`;
+}
+async function openEditor(take) {
+  if(!take.ready||busy)return;
+  pause();
+  const version=++editorVersion;
+  editingTake=take;
+  $('editor-title').textContent=`Start of ${take.id==='a'?'first':'second'} attempt`;
+  $('editor-saved').textContent=`Current start: ${fmt(value('start-'+take.id))}`;
+  $('editor-end').textContent=fmt(take.video.duration);
+  $('editor-timeline').max=String(Math.max(0,take.video.duration-.001));
+  $('editor-step-fps').value=$('step-fps').value;
+  for(const id of ['editor-apply','editor-timeline','editor-back','editor-forward'])$(id).disabled=true;
+  $('editor-time').textContent='00:00.000';$('editor-timeline').value='0';
+  $('editor-dialog').showModal();
+  editorVideo.src=take.url;editorVideo.load();
+  try {
+    await new Promise((resolve,reject)=>{
+      const clear=()=>{clearTimeout(timer);editorVideo.removeEventListener('loadeddata',ok);editorVideo.removeEventListener('error',bad);$('editor-dialog').removeEventListener('close',closed);};
+      const ok=()=>{clear();resolve();};
+      const bad=()=>{clear();reject(Error('The video could not open in the start editor. Try choosing it again.'));};
+      const closed=()=>{clear();resolve();};
+      const timer=setTimeout(bad,30000);
+      editorVideo.addEventListener('loadeddata',ok,{once:true});editorVideo.addEventListener('error',bad,{once:true});
+      $('editor-dialog').addEventListener('close',closed,{once:true});
+      if(editorVideo.readyState>=2)ok();
+    });
+    if(version!==editorVersion)return;
+    await seekVideo(editorVideo,value('start-'+take.id));
+    if(version!==editorVersion)return;
+    editorTime();for(const id of ['editor-apply','editor-timeline','editor-back','editor-forward'])$(id).disabled=false;
+  } catch(e) {if(version===editorVersion){$('editor-dialog').close();message(e.message,true);}}
+}
+function closeEditor() {
+  ++editorVersion;editingTake=null;
+  editorVideo.pause();editorVideo.removeAttribute('src');editorVideo.load();
+}
+async function applyEditor() {
+  if(!editingTake||$('editor-apply').disabled)return;
+  const take=editingTake;
+  editorVideo.pause();
+  const time=Math.max(0,Math.min(editorVideo.currentTime,take.video.duration-.001));
+  $('start-'+take.id).value=time.toFixed(3);
+  $('editor-dialog').close();
+  position=0;hideResult();update();await seek(0);
+  message(`Take ${take.id.toUpperCase()} starts at ${fmt(time)}. Preview and export begin at your chosen starts.`);
+}
 function tick() {
   if(!playing)return;
   position=Math.max(0,takes[0].video.currentTime-value('start-a'));
@@ -189,12 +244,23 @@ async function nativeSave() {
   }catch(e){bridge.abort(token);throw e;}
 }
 for(const take of takes){
-  $('file-'+take.id).addEventListener('change',async e=>{const file=e.target.files?.[0];if(!file)return;message('');try{await loadFile(take,file);}catch(err){message(err.message,true);take.ready=false;update();}e.target.value='';});
-  $('mark-'+take.id).addEventListener('click',async()=>{if(!take.ready)return;pause();$('start-'+take.id).value=take.video.currentTime.toFixed(3);position=0;hideResult();update();await seek(0);});
+  $('file-'+take.id).addEventListener('change',async e=>{const file=e.target.files?.[0];if(!file)return;message('');try{await loadFile(take,file);await openEditor(take);}catch(err){message(err.message,true);take.ready=false;update();}e.target.value='';});
+  $('edit-'+take.id).addEventListener('click',()=>openEditor(take));
   $('start-'+take.id).addEventListener('change',()=>{pause();position=0;hideResult();update();seek(0);});
   take.video.addEventListener('play',()=>{if(!playing)draw();});
   take.video.addEventListener('seeked',draw);
 }
+editorVideo.addEventListener('timeupdate',editorTime);
+editorVideo.addEventListener('seeked',editorTime);
+$('editor-timeline').addEventListener('input',()=>{editorVideo.pause();seekVideo(editorVideo,value('editor-timeline')).then(editorTime);});
+for(const [id,direction] of [['editor-back',-1],['editor-forward',1]])$(id).addEventListener('click',()=>{
+  if(!editingTake||$('editor-apply').disabled)return;
+  editorVideo.pause();seekVideo(editorVideo,editorVideo.currentTime+direction/value('editor-step-fps')).then(editorTime);
+});
+$('editor-apply').addEventListener('click',applyEditor);
+$('editor-cancel').addEventListener('click',()=>$('editor-dialog').close());
+$('close-editor').addEventListener('click',()=>$('editor-dialog').close());
+$('editor-dialog').addEventListener('close',closeEditor);
 for(const id of ['blend','tint','dx','dy','scale'])$(id).addEventListener('input',()=>{hideResult();update();});
 for(const id of ['quality','audio','duration'])$(id).addEventListener('change',hideResult);
 $('reset').addEventListener('click',()=>{for(const [id,v] of Object.entries({blend:.5,tint:.18,dx:0,dy:0,scale:1}))$(id).value=v;hideResult();update();});
@@ -207,8 +273,8 @@ $('download').addEventListener('click',async e=>{if(window.CruxSave){e.preventDe
 $('share').addEventListener('click',async()=>{if(!resultBlob)return;try{await navigator.share({files:[new File([resultBlob],'crux-ghost.mp4',{type:'video/mp4'})]});}catch(e){if(e.name!=='AbortError')message('Sharing is unavailable here. Use Save MP4 instead.',true);}});
 $('install').addEventListener('click',()=>$('install-dialog').showModal());$('close-install').addEventListener('click',()=>$('install-dialog').close());
 $('install-dialog').addEventListener('click',e=>{if(e.target===$('install-dialog'))$('install-dialog').close();});
-document.addEventListener('keydown',e=>{if(['INPUT','SELECT','TEXTAREA','BUTTON'].includes(document.activeElement?.tagName)||!ready()||busy||$('install-dialog').open)return;if(e.code==='Space'){e.preventDefault();play();}if(['ArrowLeft','ArrowRight'].includes(e.code)){e.preventDefault();pause();seek(position+(e.code==='ArrowRight'?1:-1)/value('step-fps'));}});
-document.addEventListener('visibilitychange',()=>{if(document.hidden)pause();});
+document.addEventListener('keydown',e=>{if(['INPUT','SELECT','TEXTAREA','BUTTON','VIDEO'].includes(document.activeElement?.tagName)||!ready()||busy||$('install-dialog').open||$('editor-dialog').open)return;if(e.code==='Space'){e.preventDefault();play();}if(['ArrowLeft','ArrowRight'].includes(e.code)){e.preventDefault();pause();seek(position+(e.code==='ArrowRight'?1:-1)/value('step-fps'));}});
+document.addEventListener('visibilitychange',()=>{if(document.hidden){pause();editorVideo.pause();}});
 window.addEventListener('pagehide',()=>{pause();worker?.terminate();});
 if('serviceWorker' in navigator && !window.CruxSave)navigator.serviceWorker.register('sw.js').catch(()=>{});
 update();

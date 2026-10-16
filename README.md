@@ -11,7 +11,7 @@ Compare two climbing attempts with cyan/coral ghost overlays, line them up in ti
 ## Compare
 
 1. Choose two original videos, or try the illustrated demo.
-2. Scrub each source to a matching movement, then use **Use frame** to set each sync start. Adjust balance, highlight color, and Take B’s position/scale if needed.
+2. The start editor opens after selecting a video. Scrub its large preview, step forward/back at your chosen interval, then tap **Start here**. Use **Edit start** to reopen either take and align the same movement. Cancel keeps the saved start. Adjust balance, highlight color, and Take B’s position/scale if needed.
 3. Play the ghost view, scrub, or step at your chosen frame interval.
 4. Export and save the MP4. Preview speed affects playback only; export keeps source timing.
 
