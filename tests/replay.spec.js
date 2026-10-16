@@ -23,7 +23,8 @@ test('local MP4 render keeps dimensions, timing and all video bytes on device',a
   await page.screenshot({path:'test-results/desktop.png',fullPage:true});
   await page.setViewportSize({width:390,height:844});
   await expect(page.locator('body')).toBeVisible();
-  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBeTruthy();
+  await page.screenshot({path:'test-results/mobile-before-check.png',fullPage:true});
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),JSON.stringify(await page.locator('body *').evaluateAll(es=>es.filter(e=>e.getBoundingClientRect().right>innerWidth+1).map(e=>({tag:e.tagName,id:e.id,cls:e.className,right:e.getBoundingClientRect().right}))))).toBeTruthy();
   await page.screenshot({path:'test-results/mobile.png',fullPage:true});
 });
 test('lossless export and cancellation reset the worker',async({page})=>{

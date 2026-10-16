@@ -47,6 +47,10 @@ A push to `main` runs real browser MP4 export tests, deploys `web/` to GitHub Pa
 
 Engine maintainers: build with `node tools/build.mjs ../crux-ghost/web/engine` from the private repository, review the resulting artifacts, then commit them here. The public website does not need access to the private repository.
 
+## Security
+
+See [security boundaries](docs/SECURITY.md) for the local-only data flow, Android file-saving bridge and publication permissions. No remote administration API is exposed.
+
 ## License
 
 App/wrapper and compiled comparison worker: MIT. FFmpeg and its linked codecs retain their own GPL/LGPL and dependency licenses. AndroidX WebKit: Apache 2.0. See [third-party notices](web/third-party.html).
